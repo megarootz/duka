@@ -66,14 +66,20 @@ app.get('/historical', async (req, res) => {
       });
     }
 
+    // Hapus volume dari setiap bar data
+    const dataWithoutVolume = data.map(bar => {
+      const { volume, ...rest } = bar;
+      return rest;
+    });
+
     // Format response
     const response = {
       instrument: instrument.toLowerCase(),
       timeframe: timeframe.toLowerCase(),
       from: from,
       to: to,
-      data_count: data.length,
-      data: data
+      data_count: dataWithoutVolume.length,
+      data: dataWithoutVolume
     };
 
     // Set appropriate content type
@@ -81,10 +87,10 @@ app.get('/historical', async (req, res) => {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${instrument}_${timeframe}_${from}_to_${to}.csv"`);
 
-      // Convert to CSV format
-      const csvHeader = 'timestamp,open,high,low,close,volume\n';
-      const csvRows = data.map(bar => 
-        `${bar.timestamp},${bar.open},${bar.high},${bar.low},${bar.close},${bar.volume || ''}`
+      // Convert to CSV format TANPA VOLUME
+      const csvHeader = 'timestamp,open,high,low,close\n'; // Header tanpa volume
+      const csvRows = dataWithoutVolume.map(bar => 
+        `${bar.timestamp},${bar.open},${bar.high},${bar.low},${bar.close}`
       ).join('\n');
       res.send(csvHeader + csvRows);
     } else {
