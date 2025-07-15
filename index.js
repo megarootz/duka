@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const { getHistoricalRates } = require('dukascopy-node');
 
 const app = express();
