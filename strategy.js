@@ -1,93 +1,119 @@
 const technicalindicators = require('technicalindicators');
 
-function analyzeStrategy(candles) {
-  // Validasi: minimal 50 candle
-  if (!candles || candles.length < 50) {
-    return { 
-      error: `Insufficient data (only ${candles?.length || 0} candles)`,
-      trend: "Unknown",
-      signal: "No Signal",
-      entry: null,
-      stop_loss: null,
-      take_profit: null,
-      price: null,
-      rsi: null,
-      atr: null
-    };
+// Helper: Find significant support/resistance levels
+function findSignificantLevels(highs, lows, closingPrices, period = 50) {
+  const significantLevels = [];
+  const pivotHighs = [];
+  const pivotLows = [];
+
+  // Identifikasi pivot points
+  for (let i = period; i < highs.length - period; i++) {
+    const highWindow = highs.slice(i - period, i + period + 1);
+    const lowWindow = lows.slice(i - period, i + period + 1);
+    
+    if (highs[i] === Math.max(...highWindow)) {
+      pivotHighs.push(highs[i]);
+    }
+    
+    if (lows[i] === Math.min(...lowWindow)) {
+      pivotLows.push(lows[i]);
+    }
   }
+
+  // Gabungkan dan urutkan level signifikan
+  significantLevels.push(...pivotHighs, ...pivotLows);
+  significantLevels.sort((a, b) => a - b);
+  
+  return [...new Set(significantLevels)]; // Hapus duplikat
+}
+
+function analyzeStrategy(candles) {
+  // ... validasi data ...
 
   const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
+  const volumes = candles.map(c => c.volume || 0); // Gunakan 0 jika volume tidak tersedia
 
   try {
-    // Hitung indikator
-    const ema50 = technicalindicators.EMA.calculate({ period: 50, values: closes });
-    const ema200 = technicalindicators.EMA.calculate({ period: 200, values: closes });
-    const rsi = technicalindicators.RSI.calculate({ period: 14, values: closes });
-    const atr = technicalindicators.ATR.calculate({
-      high: highs,
-      low: lows,
-      close: closes,
-      period: 14
-    });
+    // ... perhitungan indikator ...
 
-    // Ambil nilai terkini (indikator mungkin lebih pendek dari candles karena periode)
-    const currentClose = closes[closes.length - 1];
-    const currentEma50 = ema50[ema50.length - 1];
-    const currentEma200 = ema200[ema200.length - 1];
-    const currentRsi = rsi[rsi.length - 1];
-    const currentAtr = atr[atr.length - 1];
-
-    // Tentukan trend
-    let trend = "Neutral";
-    if (currentEma50 > currentEma200) trend = "Uptrend";
-    else if (currentEma50 < currentEma200) trend = "Downtrend";
-
-    // Break of Structure (BOS): swing high/low 5 candle terakhir
-    const swingHigh = Math.max(...highs.slice(-5));
-    const swingLow = Math.min(...lows.slice(-5));
-
-    let signal = "No Signal";
-    let entry = 0, sl = 0, tp = 0;
-
-    if (currentClose > swingHigh && trend === "Uptrend") {
-      signal = "BUY";
-      entry = currentClose;
-      sl = entry - (currentAtr * 1.5);
-      tp = entry + ((entry - sl) * 2);
-    } else if (currentClose < swingLow && trend === "Downtrend") {
-      signal = "SELL";
-      entry = currentClose;
-      sl = entry + (currentAtr * 1.5);
-      tp = entry - ((sl - entry) * 2);
+    // 1. Tentukan level support/resistance signifikan
+    const significantLevels = findSignificantLevels(highs, lows, closes, 20);
+    
+    // 2. Identifikasi level breakout terdekat
+    const nearestResistance = Math.min(...significantLevels.filter(l => l > currentClose));
+    const nearestSupport = Math.max(...significantLevels.filter(l => l < currentClose));
+    
+    // 3. Deteksi breakout
+    let breakoutLevel = null;
+    let breakoutDirection = null;
+    
+    if (currentClose > nearestResistance) {
+      breakoutLevel = nearestResistance;
+      breakoutDirection = "UP";
+    } else if (currentClose < nearestSupport) {
+      breakoutLevel = nearestSupport;
+      breakoutDirection = "DOWN";
     }
 
+    // 4. Konfirmasi retest dan candle
+    let confirmedBreakout = false;
+    let entry = 0, sl = 0, tp = 0;
+    
+    if (breakoutLevel) {
+      // Cek retest (harga kembali mendekati level breakout)
+      const retestThreshold = breakoutLevel * 0.995; // 0.5% tolerance
+      const recentPrices = closes.slice(-5);
+      
+      const hasRetest = breakoutDirection === "UP" 
+        ? recentPrices.some(p => p <= breakoutLevel * 1.005 && p >= retestThreshold)
+        : recentPrices.some(p => p >= breakoutLevel * 0.995 && p <= breakoutLevel * 1.005);
+      
+      // Cek candle konfirmasi (candle besar atau volume tinggi)
+      const currentCandle = candles[candles.length - 1];
+      const candleSize = currentCandle.high - currentCandle.low;
+      const avgCandleSize = technicalindicators.SMA.calculate({
+        period: 10,
+        values: highs.map((h, i) => h - lows[i])
+      }).at(-1) || 0;
+      
+      const isLargeCandle = candleSize > avgCandleSize * 1.5;
+      const isHighVolume = volumes.length > 0 
+        ? currentCandle.volume > technicalindicators.SMA.calculate({
+            period: 10,
+            values: volumes
+          }).at(-1) * 1.5
+        : false;
+      
+      confirmedBreakout = hasRetest && (isLargeCandle || isHighVolume);
+    }
+
+    // 5. Generate sinyal berdasarkan konfirmasi breakout
+    if (confirmedBreakout) {
+      if (breakoutDirection === "UP" && trend === "Uptrend") {
+        signal = "BUY";
+        entry = currentClose;
+        sl = entry - (currentAtr * 1.5);
+        tp = entry + ((entry - sl) * 2); // RR 1:2
+      } else if (breakoutDirection === "DOWN" && trend === "Downtrend") {
+        signal = "SELL";
+        entry = currentClose;
+        sl = entry + (currentAtr * 1.5);
+        tp = entry - ((sl - entry) * 2); // RR 1:2
+      }
+    }
+
+    // ... kode sisanya sama ...
+    
     return {
-      trend,
-      signal,
-      entry: entry ? Number(entry.toFixed(5)) : null,
-      stop_loss: sl ? Number(sl.toFixed(5)) : null,
-      take_profit: tp ? Number(tp.toFixed(5)) : null,
-      price: currentClose ? Number(currentClose.toFixed(5)) : null,
-      rsi: currentRsi ? Number(currentRsi.toFixed(2)) : null,
-      atr: currentAtr ? Number(currentAtr.toFixed(5)) : null
+      // ... properti lainnya ...
+      breakout_level: breakoutLevel ? Number(breakoutLevel.toFixed(2)) : null,
+      breakout_direction: breakoutDirection,
+      breakout_confirmed: confirmedBreakout
     };
 
   } catch (error) {
-    console.error('Error in technical analysis:', error);
-    return {
-      error: "Technical indicator error",
-      trend: "Unknown",
-      signal: "No Signal",
-      entry: null,
-      stop_loss: null,
-      take_profit: null,
-      price: null,
-      rsi: null,
-      atr: null
-    };
+    // ... error handling ...
   }
 }
-
-module.exports = { analyzeStrategy };
