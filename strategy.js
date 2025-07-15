@@ -2,7 +2,10 @@ const technicalindicators = require('technicalindicators');
 
 function analyzeStrategy(candles) {
     if (!candles || candles.length < 100) {
-        return { signal: "Insufficient data" };
+        return { 
+            signal: "Insufficient data",
+            error: `Need at least 100 candles, got ${candles?.length || 0}`
+        };
     }
 
     const closes = candles.map(c => c.close);
@@ -19,17 +22,16 @@ function analyzeStrategy(candles) {
         period: 14
     });
 
-    const currentClose = closes.at(-1);
-    const currentEma50 = ema50.at(-1);
-    const currentEma200 = ema200.at(-1);
-    const currentRsi = rsi.at(-1);
-    const currentAtr = atr.at(-1);
+    const currentClose = closes[closes.length - 1];
+    const currentEma50 = ema50[ema50.length - 1];
+    const currentEma200 = ema200[ema200.length - 1];
+    const currentRsi = rsi[rsi.length - 1];
+    const currentAtr = atr[atr.length - 1];
 
     let trend = "Neutral";
     if (currentEma50 > currentEma200) trend = "Uptrend";
     else if (currentEma50 < currentEma200) trend = "Downtrend";
 
-    // BOS logic
     const swingHigh = Math.max(...highs.slice(-5));
     const swingLow = Math.min(...lows.slice(-5));
 
@@ -60,6 +62,4 @@ function analyzeStrategy(candles) {
     };
 }
 
-module.exports = {
-    analyzeStrategy
-};
+module.exports = { analyzeStrategy };
