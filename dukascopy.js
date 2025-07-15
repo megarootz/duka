@@ -4,6 +4,7 @@ const { getHistoricalRates } = require('dukascopy-node');
 const timeframeMap = {
   'D1': 'd1',
   'H4': 'h4',
+  'H1': 'h1',
   'M15': 'm15',
   'M1': 'm1'
 };
@@ -12,6 +13,7 @@ const timeframeMap = {
 const MAX_CANDLES = {
   'D1': 365,    // 1 tahun
   'H4': 90 * 6, // 90 hari * 6 candle per hari (h4 = 6 candle per hari)
+  'H1': 30 * 24, // 30 hari (24 candle per hari)
   'M15': 7 * 96 // 7 hari * 96 candle per hari (m15 = 96 per hari)
 };
 
