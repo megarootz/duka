@@ -27,11 +27,10 @@ app.post('/analysis', async (req, res) => {
     const { symbol = 'XAUUSD' } = req.body;
     
     const timeframes = [
-      { name: 'D1', days: 365 },   // 1 tahun data harian
-      { name: 'H4', days: 90 },    // 3 bulan data 4 jam
-      { name: 'M15', days: 7 }     // 1 minggu data 15 menit
+      { name: 'H1', days: 30 },   // Timeframe utama
+      { name: 'H4', days: 90 },   // Konteks jangka menengah
+      { name: 'D1', days: 365 }   // Konteks jangka panjang
     ];
-
     const result = {};
 
     // Proses satu per satu untuk hemat memory
