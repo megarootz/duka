@@ -1,10 +1,25 @@
 const express = require('express');
 const moment = require('moment');
+const cors = require('cors'); // Tambahkan ini
 const { getCandles } = require('./dukascopy');
 const { analyzeStrategy } = require('./strategy');
 
 const app = express();
+
+// Middleware
+app.use(cors()); // Tambahkan CORS
 app.use(express.json());
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Dukascopy Trading API is running!',
+    endpoints: [
+      'POST /analysis - Analyze market with body: { symbol: "XAUUSD" }',
+      'GET /price/:symbol - Get current price (e.g., /price/XAUUSD)'
+    ]
+  });
+});
 
 app.post('/analysis', async (req, res) => {
     try {
@@ -47,7 +62,8 @@ app.get('/price/:symbol', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+// Gunakan port dari environment variable atau 10000
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Server running on port ${PORT}`);
 });
