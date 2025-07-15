@@ -6,6 +6,7 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dukascopy-node": "^1.43.0",
     "express": "^4.18.2",
     "moment": "^2.29.4",
