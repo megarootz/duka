@@ -1,14 +1,14 @@
 {
   "name": "duka",
   "version": "1.0.0",
-  "description": "Dukascopy technical analysis with breakout strategy",
-  "main": "app.js",
+  "main": "app.js", // <-- PASTIKAN INI app.js
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js" // <-- UBAH KE app.js
   },
   "dependencies": {
     "express": "^4.18.2",
+    "technicalindicators": "^3.1.0",
     "moment": "^2.29.4",
-    "technicalindicators": "^3.1.0"
+    "node-fetch": "^3.3.2" // Jika anda guna fetch dalam duka.js
   }
 }
