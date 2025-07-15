@@ -1,23 +1,14 @@
-
 {
-  "name": "dukascopy-node",
+  "name": "duka",
   "version": "1.0.0",
-  "description": "Dukascopy historical data downloader for Node.js",
-  "main": "index.js",
+  "description": "Dukascopy technical analysis with breakout strategy",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
+    "start": "node app.js"
   },
   "dependencies": {
-    "dukascopy-node": "^1.14.3",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
-  },
-  "keywords": [
-    "dukascopy",
-    "forex",
-    "historical-data"
-  ],
-  "author": "",
-  "license": "ISC"
+    "moment": "^2.29.4",
+    "technicalindicators": "^3.1.0"
+  }
 }
