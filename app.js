@@ -1,3 +1,4 @@
+
 const express = require('express');
 const moment = require('moment');
 const cors = require('cors');
@@ -27,11 +28,14 @@ app.post('/analysis', async (req, res) => {
     const { symbol = 'XAUUSD' } = req.body;
     
     const timeframes = [
-      { name: 'H1', days: 30 },   // Timeframe utama
-      { name: 'H4', days: 90 },   // Konteks jangka menengah
-      { name: 'D1', days: 365 }   // Konteks jangka panjang
+      { name: 'M15', days: 7 },    // 15-minute timeframe for short-term analysis
+      { name: 'H1', days: 30 },    // Timeframe utama
+      { name: 'H4', days: 90 },    // Konteks jangka menengah
+      { name: 'D1', days: 365 }    // Konteks jangka panjang
     ];
     const result = {};
+
+    console.log(`Starting analysis for ${symbol} across ${timeframes.length} timeframes`);
 
     // Proses satu per satu untuk hemat memory
     for (const tf of timeframes) {
@@ -39,14 +43,40 @@ app.post('/analysis', async (req, res) => {
       const to = new Date();
 
       console.log(`Fetching ${symbol} ${tf.name} data from ${from} to ${to}`);
-      const candles = await getCandles(symbol, tf.name, from, to);
+      
+      try {
+        const candles = await getCandles(symbol, tf.name, from, to);
+        console.log(`Retrieved ${candles?.length || 0} candles for ${tf.name}`);
+        
+        // Analyze the strategy for this timeframe
+        const analysis = analyzeStrategy(candles, tf.name);
+        result[tf.name] = analysis;
+        
+        console.log(`${tf.name} analysis completed:`, {
+          trend: analysis.trend,
+          signal: analysis.signal,
+          candleCount: candles?.length || 0
+        });
+        
+      } catch (tfError) {
+        console.error(`Error processing ${tf.name}:`, tfError);
+        result[tf.name] = {
+          trend: 'Error',
+          signal: 'Error',
+          entry: 0,
+          sl: 0,
+          tp: 0,
+          rsi: 0,
+          atr: 0,
+          error: `Failed to process ${tf.name}: ${tfError.message}`
+        };
+      }
       
       // Beri jeda 100ms antara timeframe untuk mengurangi beban memory
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      result[tf.name] = analyzeStrategy(candles);
     }
 
+    console.log(`Analysis completed for ${symbol}. Results:`, Object.keys(result));
     res.json({ symbol, analysis: result });
 
   } catch (err) {
@@ -79,4 +109,5 @@ app.get('/price/:symbol', async (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📊 Available timeframes: M15, H1, H4, D1`);
 });
